@@ -118,3 +118,74 @@ def log_Pe(G):
     return (k, menos_Pe)
 
 #-------------------------------------------------------------------------------
+def ec(G,ess):
+    #Toma un grafo G y va eliminando nodos de acuerdo a la medida de centralidad
+    #eigenvalues centrality(ec). Devuelve dos listas, la fraccion de nodos elimi
+    #nadas y el tamano de la componente conexa mas grande
+    
+    #Usamos la funcion nx.eigenvector_centrality que ya nos calcula el autovector
+    #de autovalor mas grande.
+    nodes_total=G.number_of_nodes()
+    centrality = nx.eigenvector_centrality(G) #diccionario de centralidades
+    centrality_sorted=sorted(centrality.items(), key=lambda x: x[1],reverse=True) #ordenados de mayor a menor
+
+    nodes_to_remove=[centrality_sorted[i][0] for i in range(0,len(centrality_sorted))]
+
+    #Eliminamos de mayor ec a menor
+    remove_node_fraction=[]
+    lcc=[]
+
+    remove_node_fraction.append(0)
+    Gcc = sorted(nx.connected_component_subgraphs(G), key=len, reverse=True)
+    G0 = Gcc[0]
+    lcc.append(G0.number_of_nodes()/float(nodes_total))
+    
+    for i in range(0,nodes_total-1):
+        G.remove_node(nodes_to_remove[i])
+        remove_node_fraction.append((i+1)/float(nodes_total))
+        Gcc = sorted(nx.connected_component_subgraphs(G), key=len, reverse=True)
+        G0 = Gcc[0]
+        lcc.append(G0.number_of_nodes()/float(nodes_total))
+        
+    #Outputs
+    forn=list(remove_node_fraction) #fraction of removed nodes
+    lcc_ec=list(lcc)                #largestconnectedcomponent
+
+    return (forn,lcc_ec)
+
+#-------------------------------------------------------------------------------
+def spbc(G,ess):
+    #Toma un grafo G y va eliminando nodos de acuerdo a la medida de centralidad
+    #shortest path betweenness centrality(spbc). Devuelve dos listas, la fraccion de nodos elimi
+    #nadas y el tamano de la componente conexa mas grande
+    
+    #Usamos la funcion nx.eigenvector_centrality que ya nos calcula el autovector
+    #de autovalor mas grande.
+    nodes_total=G.number_of_nodes()
+    centrality = nx.betweenness_centrality(G,normalized=True) #diccionario de centralidades
+    centrality_sorted=sorted(centrality.items(), key=lambda x: x[1],reverse=True) #ordenados de mayor a menor
+
+    nodes_to_remove=[centrality_sorted[i][0] for i in range(0,len(centrality_sorted))]
+
+    #Eliminamos de mayor spbc a menor
+    remove_node_fraction=[]
+    lcc=[]
+
+    remove_node_fraction.append(0)
+    Gcc = sorted(nx.connected_component_subgraphs(G), key=len, reverse=True)
+    G0 = Gcc[0]
+    lcc.append(G0.number_of_nodes()/float(nodes_total))
+    
+    for i in range(0,nodes_total-1):
+        G.remove_node(nodes_to_remove[i])
+        remove_node_fraction.append((i+1)/float(nodes_total))
+        Gcc = sorted(nx.connected_component_subgraphs(G), key=len, reverse=True)
+        G0 = Gcc[0]
+        lcc.append(G0.number_of_nodes()/float(nodes_total))
+        
+    #Outputs
+    forn=list(remove_node_fraction) #fraction of removed nodes
+    lcc_spbc=list(lcc)                #largestconnectedcomponent
+
+    return (forn,lcc_spbc)
+#-----------------------------------------------------------------------------------
