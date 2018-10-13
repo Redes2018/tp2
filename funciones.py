@@ -2,6 +2,7 @@ import sys
 sys.path.append('/usr/local/lib/python2.7/site-packages')
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as sc
 import pandas as pd
 import networkx as nx
 import os
@@ -54,68 +55,89 @@ def esenciales(G,ess):
 def frac_ess(G):
     
 # Toma un grafo G con atributo essential y devuelve dos vectores, k y nodos_frac
-    grados_dict = dict(G.degree())
-    ess_dict = nx.get_node_attributes(G,'essential')
+	grados_dict = dict(G.degree())
+	ess_dict = nx.get_node_attributes(G,'essential')
 
-    k_lista = list(grados_dict.values()) # lista de grados de nodos en orden
-    k = np.unique(k_lista) # vector de grado de nodos sin repetir
+	k_lista = list(grados_dict.values()) # lista de grados de nodos en orden
+	k = np.unique(k_lista) # vector de grado de nodos sin repetir
 
-    L = len(k)
-    nodos_ess = np.zeros(L)
-    nodos_total = np.zeros(L)
-    nodos_frac = np.zeros(L)
+	L = len(k)
+	nodos_ess = np.zeros(L)
+	nodos_total = np.zeros(L)
+	nodos_frac = np.zeros(L)
 
-    for i,grado in enumerate(k):
-        nodos_total[i] = k_lista.count(grado)
+	for i,grado in enumerate(k):
+		nodos_total[i] = k_lista.count(grado)
 		# cuenta cuantas veces aparece cada grado en k_lista
 		
-    for proteina in ess_dict:
-        if ess_dict[proteina] == True:
-            i = np.where(k == grados_dict[proteina])
-            nodos_ess[i]=nodos_ess[i]+1
+	for proteina in ess_dict:
+            if ess_dict[proteina] == True:
+                i = np.where(k == grados_dict[proteina])
+		nodos_ess[i]=nodos_ess[i]+1
 
-    nodos_frac = nodos_ess / nodos_total
-    nodos_frac=list(nodos_frac)
+	nodos_frac = nodos_ess / nodos_total
+	nodos_frac=list(nodos_frac)
+
+	#Uso lo que calculamos para hacer la figura 1A.
+	frac_ess_nodes=np.zeros(L)
+	hub_cutoff=np.zeros(L)
+	for i, grado in enumerate(k):
+            frac_ess_nodes[i]=np.sum(nodos_ess[i:])/float(np.sum(nodos_total[i:]))
+            hub_cutoff[i]=np.sum(nodos_total[i:])/float(G.number_of_nodes())
+
+        #Coeficientes de Correlacion
+        kendall_tau=sc.kendalltau(k,frac_ess_nodes)[0]
+        k_pvalue=sc.kendalltau(k,frac_ess_nodes)[1]
+        kendall=[kendall_tau,k_pvalue]
+
+        spearman_ro=sc.spearmanr(k,frac_ess_nodes)[0]
+        s_pvalue=sc.spearmanr(k,frac_ess_nodes)[1]
+        spearman=[spearman_ro,s_pvalue]
+        
+	# Devuelve seis listas:
+        k=list(k)
+        nodos_frac=list(nodos_frac)
+        hub_cutoff=list(hub_cutoff)
+        frac_ess_nodes=list(frac_ess_nodes)
+        
+	# Nota: nodos_frac[i] es la fraccion de nodos esenciales que hay en el grado k[i]
+	#       frac_ess_nodes[i] es la fraccion de nodos esenciales mayor o iguales al grado k[i] que es la de la figura 1A.
 	
-	# Devuelve dos listas: el vector k con grados (eje x) y el vector nodos_frac con la fraccion de nodos esenciales (eje y)
-    k=list(k)
-    nodos_frac=list(nodos_frac)
-	# Podria agregarse que tambien devuelva nodos totales y nodos esenciales
-	
-    return(k,nodos_frac)
+	return(k,nodos_frac,hub_cutoff,frac_ess_nodes,kendall,spearman)
 #-------------------------------------------------------------------------------
 def log_Pe(G):
 
 # Toma un grafo G con atributo essential y devuelve dos vectores, k y ln(1-Pe)
-    grados_dict = dict(G.degree())
-    ess_dict = nx.get_node_attributes(G,'essential')
+	grados_dict = dict(G.degree())
+	ess_dict = nx.get_node_attributes(G,'essential')
 
-    k_lista = list(grados_dict.values()) # lista de grados de nodos en orden
-    k = np.unique(k_lista) # vector de grado de nodos sin repetir
+	k_lista = list(grados_dict.values()) # lista de grados de nodos en orden
+	k = np.unique(k_lista) # vector de grado de nodos sin repetir
 
-    L = len(k)
-    nodos_ess = np.zeros(L)
-    nodos_total = np.zeros(L)
-    nodos_frac = np.zeros(L)
+	L = len(k)
+	nodos_ess = np.zeros(L)
+	nodos_total = np.zeros(L)
+	nodos_frac = np.zeros(L)
 
-    for i,grado in enumerate(k):
-        nodos_total[i] = k_lista.count(grado)
-        # cuenta cuantas veces aparece cada grado en k_lista
-    for proteina in ess_dict:
-        if ess_dict[proteina] == True:
-            i = np.where(k == grados_dict[proteina])
-            nodos_ess[i] += 1
-
-    nodos_ess=np.array(nodos_ess, dtype=float) #pasamos a float 
-    nodos_frac = nodos_ess / nodos_total
-    
-    menos_Pe = np.log(1 - nodos_frac)
+	for i,grado in enumerate(k):
+		nodos_total[i] = k_lista.count(grado)
+		# cuenta cuantas veces aparece cada grado en k_lista
+		
+	for proteina in ess_dict:
+		if ess_dict[proteina] == True:
+			i = np.where(k == grados_dict[proteina])
+			nodos_ess[i] += 1
+		
+        nodos_ess=np.array(nodos_ess, dtype=float) #pasamos a float 
+	nodos_frac = nodos_ess / nodos_total
+	
+	menos_Pe = np.log(1 - nodos_frac)
     
 	# Devuelve dos listas : el vector k con grados (eje x) y el vector log(1-Pe) (eje y)
-    menos_Pe=list(menos_Pe)
-    k=list(k)
+	menos_Pe=list(menos_Pe)
+        k=list(k)
         
-    return (k, menos_Pe)
+        return (k, menos_Pe)
 
 #-------------------------------------------------------------------------------
 def ec(G,ess):
