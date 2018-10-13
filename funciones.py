@@ -211,3 +211,32 @@ def spbc(G,ess):
 
     return (forn,lcc_spbc)
 #-----------------------------------------------------------------------------------
+def G_modeloHe(G,alfa,beta):
+    #Toma un grafo G y dos probabilidades alfa y beta. Asignamos la propiedad
+    #esencial a los enlaces con probabilidad alfa. Asigna la probabilidad
+    #esencial a los nodos con probabilidad beta. Devuelve un grafo G_model con
+    #la propiedad esencial distribiuda en enlaces y nodos segun ese proceso.
+    nodos=list(G.nodes())
+    enlaces=list(G.edges())
+
+    random_ess_enlace=np.random.choice(['True','False'],p=[alfa, 1-alfa], size=(1,len(enlaces)))[0]
+    random_ess_nodo=np.random.choice(['True','False'],p=[beta, 1-beta], size=(1,len(nodos)))[0]
+
+    #Creamos un diccionario de enlaces con la prop essential
+    ess_enlace_dic={}
+    for e, enlace in enumerate(enlaces):
+        ess_enlace_dic[enlace]=random_ess_enlace[e]
+
+    #Creamos un diccionario de nodos con la prop essential
+    ess_nodo_dic={}
+    for n, nodo in enumerate(nodos):
+        ess_nodo_dic[nodo]=random_ess_nodo[n]
+    
+    #Asignamos la propiedad esencial a enlaces
+    nx.set_edge_attributes(G,ess_enlace_dic,'essential')
+
+    #Asignamos la propiedad esencial a nodos
+    nx.set_node_attributes(G,ess_nodo_dic,'essential')
+    
+    return G
+#-----------------------------------------------------------------------------------
