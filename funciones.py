@@ -460,3 +460,106 @@ def beta_He(G,m,N,name):
 
     
     return(beta,beta_error)
+
+#-----------------------------------------------------------------------------------
+
+def fig3(G,ess,name):      
+    
+    #Creo copias superficiales de G porque solo me interesan sus nodos
+    G_copy0 = G.copy()
+    G_copy1 = G.copy()
+    G_copy2 = G.copy()
+    G_copy3 = G.copy()
+    G_copy4 = G.copy()
+    
+    
+    L = len(G) # tamaño del grafo (cantidad de nodos)
+    nodos_elim = np.arange(L) # vector que va del 0 al L-1, cantidad de nodos que se va a ir eliminando (eje x)
+    forn= nodos_elim/L #fracción de nodos eliminados
+        
+    lcc_dc= np.ones(L)#componente gigante obtenida mediante remoción de nodos por degree centrality (eje y)
+    lcc_dc[0] = L # la primera componente es el tamaño original del grafo
+
+    lcc_random= np.ones(L) #componente gigante obtenida mediante remocion de nodos aleatorios (eje y)
+    lcc_random[0] = L # la primera componente es el tamaño original del grafo
+    
+    lcc_ess= np.ones(L) #componente gigante obtenida mediante remoción de nodos esenciales de mayor a menor "esencialidad" (eje y)
+    lcc_ess[0] = L # la primera componente es el tamaño original del grafo
+    
+    
+    #Le voy sacando nodos de forma aleatoria. Defino una lista de los nodos de G y la mezlco
+    ls_r = list(G.nodes())
+    random.shuffle(ls_r) #ls_r ya queda mezclada
+    for i in range(L-1):
+        G_copy0.remove_node(ls_r[i])
+        lcc_random[i+1] = len(max(nx.connected_component_subgraphs(G_copy0),key=len))
+        
+    lcc_random = [ x/L for x in lcc_random]    
+
+        
+    #Le voy sacando nodos siguiendo de mayor a menor degree centrality y los ordeno
+    ls_dc=nx.degree_centrality(G_copy1)
+    ls_dc=sorted(ls_dc, key=ls_dc.__getitem__, reverse=True)  #Ordeno de menor a mayor, por eso revierto
+    for i in range(L-1):
+        G_copy1.remove_node(ls_dc[i])
+        lcc_dc[i+1] = len(max(nx.connected_component_subgraphs(G_copy1),key=len))
+    
+    lcc_dc = [ x/L for x in lcc_dc]    
+    
+    #Le saco todas las esenciales de una
+    from funciones import esenciales
+    (G,ls_ess,lista_no_es) = esenciales(G_copy2,ess) #uso esta funcion para obtener las lista de las ess en G
+    G_copy2.remove_nodes_from(ls_ess) #Le saco todos los esenciales
+    lcc_ess = len(max(nx.connected_component_subgraphs(G_copy2),key=len))/L
+    x=(len(ls_ess))/L  #defino mi x como la cant de nodos ess sacados/total
+    
+    from funciones import ec
+    (forn_ec,lcc_ec) = ec(G_copy3, ess)
+    
+    from funciones import spbc
+    (forn_spbc, lcc_spbc) = spbc(G_copy4, ess)
+    
+
+
+    
+    #Guardamos los datos:
+    output={}
+    output[name+'fron_random']=forn
+    output[name+'lcc_random']=lcc_random
+    
+    output[name+'forn_dc']=forn
+    output[name+'lcc_dc']=lcc_dc
+    
+    output[name+'lcc_ess']=lcc_ess
+    output[name+'forn_ess']= x
+    
+    output[name+'fron_ec']=forn_ec
+    output[name+'lcc_ec']=lcc_ec
+    
+    output[name+'fron_spbc']=forn_spbc
+    output[name+'lcc_spbc']=lcc_spbc
+  
+    
+    df= pd.DataFrame()
+    df['Date'] = output.keys()
+    df['DateValue'] = output.values()
+    df.to_csv(name+'_datos.txt', sep='\t')
+    
+    plt.figure()
+
+    plt.plot(forn,lcc_random,'--r',label='Random')
+    plt.plot(forn,lcc_dc,'--m',label='DC')
+    plt.plot(x,lcc_ess,'b.',markersize="10",label='Ess')
+    plt.plot(forn_ec,lcc_ec,'--c',label='EC')
+    plt.plot(forn_spbc,lcc_spbc,'--k',label='SPBC')
+
+    plt.xlabel('Cantidad de nodos eliminados')
+    plt.ylabel('Tamano de la componente gigante')
+    plt.title('Eliminacion de nodos segun distintas estrategias')
+    plt.legend()
+    plt.title(name)
+    plt.savefig(name+'_grafico.png')
+    plt.show()
+    
+    return(lcc_dc, lcc_random, lcc_ess, lcc_spbc, lcc_ec, forn, x)
+
