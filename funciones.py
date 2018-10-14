@@ -461,7 +461,10 @@ def beta_He(G,m,N,name):
     
     return(beta,beta_error)
 
+#-------------------------------------------------------------------------------
 def pairs(G):
+	# Toma un grafo G (con atributo Esencial) y devuelve la cantidad de pares de nodos no adyacentes
+	# y la cantidad de pares de nodos no adyacentes con al menos 3 vecinos en común
 	ess_dict = nx.get_node_attributes(G,'essential')
 	nodos_lista = list(G.nodes())
 
@@ -493,4 +496,7 @@ def pairs(G):
 			nodo2 = nodos_lista[J[i]]
 			if ess_dict[nodo1] == ess_dict[nodo2]:
 				pares_iguales +=1
+	pares = int(pares/2)
+	pares_iguales = int(pares_iguales/2)
+	
 	return (pares, pares_iguales)
