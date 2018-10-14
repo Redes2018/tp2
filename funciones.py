@@ -460,3 +460,37 @@ def beta_He(G,m,N,name):
 
     
     return(beta,beta_error)
+
+def pairs(G):
+	ess_dict = nx.get_node_attributes(G,'essential')
+	nodos_lista = list(G.nodes())
+
+	A = nx.to_numpy_matrix(G) # matriz de adyacencia de G
+	T = len(A) # tamaño de la matriz, debe ser igual que la cantidad de nodos, me aseguro:
+
+	if G.number_of_nodes()!=T:
+		print('El grafo y la matriz no son del mismo tamaño')
+
+	for i in range(T):
+		A[i,i]=0 # Como hay auto loops, pongo ceros en la diagonal
+
+	A2 = A**2 # Creo la matriz de adyacencia al cuadrado
+	# El lugar i,j de esta matriz me dice cuantos caminos de longitud 2 hay entre el nodo i y el j
+	
+	# Como quiero quedarme con pares de nodos que tengan al menos 3 vecinos en común,
+	# busco que haya al menos 3 caminos de longitud 2 entre ellos
+	I,J = np.where(A2 >= 3)
+	# obtengo los indices de los lugares
+	
+	# Cuento cantidad de pares de nodos con 3 o más vecinos en común
+	pares = 0
+	pares_iguales = 0
+
+	for i in range(len(I)):
+		if I[i]!=J[i] and A[I[i],J[i]] == 0: # que no estén en la diagonal y que no sean 1os vecinos
+			pares +=1
+			nodo1 = nodos_lista[I[i]]
+			nodo2 = nodos_lista[J[i]]
+			if ess_dict[nodo1] == ess_dict[nodo2]:
+				pares_iguales +=1
+	return (pares, pares_iguales)
