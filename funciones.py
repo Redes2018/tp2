@@ -561,9 +561,8 @@ def fig3(G,ess,name):
     plt.savefig(name+'_grafico.png')
     plt.show()
     
-	return(lcc_dc, lcc_random, lcc_ess, lcc_spbc, lcc_ec, forn, x)
-
-
+    return(lcc_dc, lcc_random, lcc_ess, lcc_spbc, lcc_ec, forn, x)
+           
 #-------------------------------------------------------------------------------
 def pairs(G):
 	# Toma un grafo G (con atributo Esencial) y devuelve la cantidad de pares de nodos no adyacentes
