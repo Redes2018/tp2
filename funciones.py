@@ -240,19 +240,33 @@ def G_simulation(G,alfa,beta):
     
     return G
 #-----------------------------------------------------------------------------------
-def rewiring_easy(G):
+def rewiring(G):
     #Funcion de grafo G que toma un grafo y realiza un recableado
     #manteniendo el grado de cada nodo y devuelve ibeps la cantidad
     #de enlaces entre nodos esenciales luego de recablear.
-    #Utiliza la funcion nx.double_edge_swap que elije dos enlaces
-    #al azar y flipea los enlaces manteniendo los grados de los nodos.
-
-    numero_enlaces=G.number_of_edges()
     
-    #Realizamos un numero de swaps del orden de los nodos de la red
-    for i in range(0,int(numero_enlaces/2)):
-        nx.double_edge_swap(G, nswap=1)
-             
+    nodos=list(G.nodes)
+    enlaces=list(G.edges)
+    grados_dict = dict(G.degree())
+    k_nodo= list(grados_dict.values()) # lista de grados de cada nodo en nodos(ordenados)
+
+    #Eliminamos todos los enlaces:
+    G.remove_edges_from(enlaces)
+    
+    #Inicializo k_control:
+    k_control=np.array(k_nodo) #cuando creo un enlace entre nodoi y nodoj se le resta un 1 a los lugares i y j de k_control
+    nodos_new=nodos
+    while(len(nodos_new)>1):
+        pair=list(np.random.choice(nodos_new, size=(1,2), replace=False)[0])#elegimos dos nodos al azar con reposicion
+        if pair[0]!=pair[1]: #evitamos crear autoloops
+            #Creamos el enlace
+            G.add_edge(pair[0], pair[1])
+            #Actualizamos variables de control: k_control y nodos_new
+            k_control[nodos.index(pair[0])]=k_control[nodos.index(pair[0])]-1 #actualizamos k_control en la pos i
+            k_control[nodos.index(pair[1])]=k_control[nodos.index(pair[1])]-1 #actualizamos k_control en la pos j
+            index_nonzerok=[i for i in range(0,len(k_control)) if k_control[i]!=0] #buscamos los lugares de k_control donde no hayan quedado zeros
+            nodos_new=[nodos[index_nonzerok[i]] for i in range(0,len(index_nonzerok)-1)] #actualizamos la lista de nodos asi no volvemos a tomar nodos que ya recableamos por completo
+            
     #Contamos ibeps
     ibeps=0
     ess_dict = nx.get_node_attributes(G,'essential')
@@ -261,7 +275,7 @@ def rewiring_easy(G):
     for enlace in enlaces:
         if ess_dict[enlace[0]] == True & ess_dict[enlace[1]]==True:
             ibeps=ibeps+1
-
+            
     return(G,ibeps)
 #-----------------------------------------------------------------------------------
 def alfa_He(G,N,name):
@@ -289,7 +303,7 @@ def alfa_He(G,N,name):
     for i in range(0,numero_de_rewirings):
         print('rewiring nro {}'.format(i))
         D=G.copy()
-        ibeps_simul.append(rewiring_easy(D)[1])
+        ibeps_simul.append(rewiring(D)[1])
 
     #Histograma
     plt.figure(1)
@@ -322,11 +336,8 @@ def alfa_He(G,N,name):
 
     return(alfa,error_alfa,m)                               
 #-----------------------------------------------------------------------------------
-def beta_He(G,m_hist,N,name):
-    #Muestramos un valor de m que es una lista de valores de ibeps enconrtados:
-    values,indices=np.histogram(m_hist)
-    weights=values/np.sum(values)
-  
+def beta_He(G,m,N,name):
+    
     #1)Contamos nodos esenciales
     nodos=list(G.nodes())
     ess_dict = nx.get_node_attributes(G,'essential')
@@ -340,23 +351,19 @@ def beta_He(G,m_hist,N,name):
     for enlace in enlaces:
         if ess_dict[enlace[0]] == True & ess_dict[enlace[1]]==True:
             ibeps_real=ibeps_real+1
-    print(ibeps_real)
+    #print(ibeps_real)
+    #print(m)
 
     numero_nodos_beta=[]
     numero_de_iteraciones=N
     for i in range(0,numero_de_iteraciones):
-        samplerandom=np.random.choice(indices[1:],1,p=weights)
-        m=samplerandom
         print('iteracion {}'.format(i))
-
-        #2)Hacemos una copia del grafo y borramos la esencialidad de los nodos.(no hay informacion de esencialidad en los enlaces sino habria que borrar tambien esa info)
+        #2)Hacemos una copia del grafo y borramos la esencialidad de los nodos:
         D=G.copy()
         ess_nodo_dic={}
-     
         for n, nodo in enumerate(nodos):
             ess_nodo_dic[nodo]=''
         nx.set_node_attributes(D,ess_nodo_dic,'essential')
-       
 
         #3)Asignamos esencialidad a (enlaces_PPI=ibeps-m) enlaces
         enlaces=list(D.edges())
@@ -380,19 +387,21 @@ def beta_He(G,m_hist,N,name):
         #numero_nodos_ess_real
 
         #Contamos cuantos esenciales ya tengo y cuantos faltan completar
+        #nodos=list(D.nodes())
         ess_dict = nx.get_node_attributes(D,'essential')
         nodos_ess_tengo=[nodos[k] for k in range(0,len(nodos)) if ess_dict[nodos[k]]==True]
         numero_nodos_ess_tengo=len(nodos_ess_tengo)
-        
-        #Nota: nodos_ess_tengo va cambiando en cada corrida, lo cual creo esta bien
+        #Nota: nodos_ess_simul va cambiando en cada corrida, lo cual creo esta bien
         #ya que al asignar enlaces esenciales, la esencialidad de los nodos va cambiando
         #Si asigno un dos enlaces a una misma proteina entonces la esencialidad de esa proteina sigue siendo un
         #lo cual es distinto si asigno dos enlaces esenciales no a la misma proteina, la cantidad de esenciales
         #sera mayor.
         
         numero_nodos_ess_quiero=numero_nodos_ess_real
+        #print(numero_nodos_ess_quiero)
         numero_nodos_ess_acompletar=numero_nodos_ess_quiero-numero_nodos_ess_tengo
-        
+        #print(numero_nodos_ess_tengo)
+        #print(numero_nodos_ess_acompletar)
         
         #Nota: puede pasar que cuando asigne enlacesPPI eso me dio una cantidad de
         #enlaces esenciales mas alta que la cantidad de enlaces de mi red real.
@@ -414,9 +423,9 @@ def beta_He(G,m_hist,N,name):
         while (numero_nodos_ess_acompletar_control > 0):
             nodo_elegido=np.random.choice(nodos_new)#elegimos un nodo al azar
             if ess_dict[nodo_elegido]=='': #Nos fijamos si el elegido ya era esencial.''(vacío) es que no era esencial
-                D.add_node(nodo_elegido,essential=True) #lo ponemos en escencial, si ya estaba no importa, lo cuento igual como beta
+                D.add_node(nodo_elegido,essential=True) #lo ponemos en escencial
                 #Actualizamos las variables de control
-                numero_nodos_ess_acompletar_control=numero_nodos_ess_acompletar_control-1 #restamos uno ya que si pase de false a true sumamos un escencial mas a la red 
+                numero_nodos_ess_acompletar_control=numero_nodos_ess_acompletar_control-1 #restamos uno ya que si pase de false a true sumamos un escencial mas a mi red 
             #Actualizamos las variables de control
             nodos_new.remove(nodo_elegido)#no lo vuelvemos a elegir
             ess_dict = nx.get_node_attributes(D,'essential')
@@ -429,25 +438,26 @@ def beta_He(G,m_hist,N,name):
         numero_nodos_ess_finales=len(nodos_ess_finales)
         #print(numero_nodos_ess_finales) #check
         #print(numero_nodos_ess_tenia)   #check
-        numero_nodos_ess_otros_factores=numero_nodos_ess_finales-numero_nodos_ess_tenia #esto me da cuantos nodos tuve que adicionar para alcanzar la cantidad de esencials
-        if numero_nodos_ess_otros_factores!=0:
-            numero_nodos_beta.append(numero_nodos_ess_otros_factores)
+        numero_nodos_ess_otros_factores=numero_nodos_ess_finales-numero_nodos_ess_tenia
+        numero_nodos_beta.append(numero_nodos_ess_otros_factores)
 
     #Estimacion de beta:
-    beta=np.mean(numero_nodos_beta)/len(nodos)
-    beta_error=np.std(numero_nodos_beta)/len(nodos)
-    
+    beta=np.mean(numero_nodos_beta)/numero_nodos_ess_real
+    beta_error=np.std(numero_nodos_beta)/numero_nodos_ess_real
+
     #Guardamos los datos:
+    output={}
+    output['numero_nodos_ess_real']=numero_nodos_ess_real
+    output['betas']=numero_nodos_beta
+    output['beta_mean']=beta
+    output['beta_error']=beta_error
+  
     
-    output_beta={}
-    output_beta['betas']=list(numero_nodos_beta)
-    output_beta['numero_nodos_ess_real']=numero_nodos_ess_real
-    output_beta['beta_mean']=beta
-    output_beta['beta_error']=beta_error
-    df_beta= pd.DataFrame()
-    df_beta['Date'] = output_beta.keys()
-    df_beta['DateValue'] = output_beta.values()
-    df_beta.to_csv(name+'_ibeps_data_beta.txt', sep='\t')
+    df= pd.DataFrame()
+    df['Date'] = output.keys()
+    df['DateValue'] = output.values()
+    df.to_csv(name+'_ibeps_data_beta.txt', sep='\t')
+
     
     return(beta,beta_error)
 
@@ -592,3 +602,79 @@ def pairs(G):
 	pares_iguales = int(pares_iguales/2)
 	
 	return (pares, pares_iguales)
+
+#-------------------------------------------------------------------------------
+def tabla3(G,name):   
+    
+    from funciones import esenciales
+    from funciones import frac_ess
+
+    E = G.copy()
+    NE = G.copy()
+    G1 = G.copy()
+    L = len(G)
+
+    (G1,ls_ess1, ls_no_ess1)=esenciales(G1,ess)
+
+    #Le saco todas las esenciales de una
+    NE.remove_nodes_from(ls_ess1) #Le saco todos los esenciales
+    LCC_NE=max(nx.connected_component_subgraphs(NE),key=len)
+    frac_sacando_E = LCC_NE.number_of_nodes()/L 
+    degrees_no_es = [val for (node, val) in NE.degree()]
+    k_no_es=np.unique(degrees_no_es)
+
+    #Ahora le voy a sacar a G
+    
+    #Veamos los grados de los nodos esenciales que saque en G1
+    E.remove_nodes_from(ls_no_ess1) #Le saco todos los no esenciales
+    degrees_es = [val for (node, val) in E.degree()]
+    k_es=np.unique(degrees_es)
+
+    #Quiero que armar una lista de grados no esenciales que sean parecidos a los grados esenciales
+    #y después encontrar sus nodos en G
+    #Parecidos es que el grado difiera en al menos 1 unidad
+    nueva_ls=[] 
+    for i in range(len(k_no_es)-1):
+        for j in range(len(k_es)-1):
+            if abs(k_no_es[i] -k_es[j])<=1:
+                nueva_ls.append(k_no_es[i])
+
+    nueva_ls=np.unique(nueva_ls)
+
+    #Veamos cuales son los nodos no-esenciales que cumplen esa cantidad de grados
+    nodos_NE = [node for (node, val) in NE.degree()]
+    grados_NE = [val for (node, val) in NE.degree()]
+    nodos_NE_para_sacar=[]
+    for i in range(len(nueva_ls)-1):
+        for j in range(len(nodos_NE)-1):
+            if nueva_ls[i] == grados_NE[j]:
+                nodos_NE_para_sacar.append(nodos_NE[j])
+
+    #Habiendo seleccionado los nodos, mezclo la lista y se la saco a G. Y hago estadística
+    valores = []
+    for l in range(0,1000): #mil repeticiones
+        G0 = G.copy()
+        random.shuffle(nodos_NE_para_sacar)
+        G0.remove_nodes_from(nodos_NE_para_sacar)
+        LCC_E = max(nx.connected_component_subgraphs(G0),key=len)
+        frac_sacando_NE = LCC_E.number_of_nodes()/L 
+        valores.append(frac_sacando_NE)
+
+
+    valor_medio = sum(valores)/len(valores)
+    frac_sacando_NE_mean = valor_medio
+    error = np.std(valor_medio)
+      
+    #Guardamos los datos:
+    output={}
+    output[name+'frac_sacando_E']=frac_sacando_E
+    output[name+'frac_sacando_NE_mean']=frac_sacando_NE_mean
+    output[name+'error']=error
+  
+    
+    df= pd.DataFrame()
+    df['Date'] = output.keys()
+    df['DateValue'] = output.values()
+    df.to_csv(name+'_Tabla3.txt', sep='\t')
+    
+    return(frac_sacando_E, frac_sacando_NE_mean, error)
