@@ -322,8 +322,11 @@ def alfa_He(G,N,name):
 
     return(alfa,error_alfa,m)                               
 #-----------------------------------------------------------------------------------
-def beta_He(G,m,N,name):
-    
+def beta_He(G,m_hist,N,name):
+    #Muestramos un valor de m que es una lista de valores de ibeps enconrtados:
+    values,indices=np.histogram(m_hist)
+    weights=values/np.sum(values)
+  
     #1)Contamos nodos esenciales
     nodos=list(G.nodes())
     ess_dict = nx.get_node_attributes(G,'essential')
@@ -337,19 +340,23 @@ def beta_He(G,m,N,name):
     for enlace in enlaces:
         if ess_dict[enlace[0]] == True & ess_dict[enlace[1]]==True:
             ibeps_real=ibeps_real+1
-    #print(ibeps_real)
-    #print(m)
+    print(ibeps_real)
 
     numero_nodos_beta=[]
     numero_de_iteraciones=N
     for i in range(0,numero_de_iteraciones):
+        samplerandom=np.random.choice(indices[1:],1,p=weights)
+        m=samplerandom
         print('iteracion {}'.format(i))
-        #2)Hacemos una copia del grafo y borramos la esencialidad de los nodos:
+
+        #2)Hacemos una copia del grafo y borramos la esencialidad de los nodos.(no hay informacion de esencialidad en los enlaces sino habria que borrar tambien esa info)
         D=G.copy()
         ess_nodo_dic={}
+     
         for n, nodo in enumerate(nodos):
             ess_nodo_dic[nodo]=''
         nx.set_node_attributes(D,ess_nodo_dic,'essential')
+       
 
         #3)Asignamos esencialidad a (enlaces_PPI=ibeps-m) enlaces
         enlaces=list(D.edges())
@@ -373,21 +380,19 @@ def beta_He(G,m,N,name):
         #numero_nodos_ess_real
 
         #Contamos cuantos esenciales ya tengo y cuantos faltan completar
-        #nodos=list(D.nodes())
         ess_dict = nx.get_node_attributes(D,'essential')
         nodos_ess_tengo=[nodos[k] for k in range(0,len(nodos)) if ess_dict[nodos[k]]==True]
         numero_nodos_ess_tengo=len(nodos_ess_tengo)
-        #Nota: nodos_ess_simul va cambiando en cada corrida, lo cual creo esta bien
+        
+        #Nota: nodos_ess_tengo va cambiando en cada corrida, lo cual creo esta bien
         #ya que al asignar enlaces esenciales, la esencialidad de los nodos va cambiando
         #Si asigno un dos enlaces a una misma proteina entonces la esencialidad de esa proteina sigue siendo un
         #lo cual es distinto si asigno dos enlaces esenciales no a la misma proteina, la cantidad de esenciales
         #sera mayor.
         
         numero_nodos_ess_quiero=numero_nodos_ess_real
-        #print(numero_nodos_ess_quiero)
         numero_nodos_ess_acompletar=numero_nodos_ess_quiero-numero_nodos_ess_tengo
-        #print(numero_nodos_ess_tengo)
-        #print(numero_nodos_ess_acompletar)
+        
         
         #Nota: puede pasar que cuando asigne enlacesPPI eso me dio una cantidad de
         #enlaces esenciales mas alta que la cantidad de enlaces de mi red real.
@@ -409,9 +414,9 @@ def beta_He(G,m,N,name):
         while (numero_nodos_ess_acompletar_control > 0):
             nodo_elegido=np.random.choice(nodos_new)#elegimos un nodo al azar
             if ess_dict[nodo_elegido]=='': #Nos fijamos si el elegido ya era esencial.''(vacío) es que no era esencial
-                D.add_node(nodo_elegido,essential=True) #lo ponemos en escencial
+                D.add_node(nodo_elegido,essential=True) #lo ponemos en escencial, si ya estaba no importa, lo cuento igual como beta
                 #Actualizamos las variables de control
-                numero_nodos_ess_acompletar_control=numero_nodos_ess_acompletar_control-1 #restamos uno ya que si pase de false a true sumamos un escencial mas a mi red 
+                numero_nodos_ess_acompletar_control=numero_nodos_ess_acompletar_control-1 #restamos uno ya que si pase de false a true sumamos un escencial mas a la red 
             #Actualizamos las variables de control
             nodos_new.remove(nodo_elegido)#no lo vuelvemos a elegir
             ess_dict = nx.get_node_attributes(D,'essential')
@@ -424,26 +429,25 @@ def beta_He(G,m,N,name):
         numero_nodos_ess_finales=len(nodos_ess_finales)
         #print(numero_nodos_ess_finales) #check
         #print(numero_nodos_ess_tenia)   #check
-        numero_nodos_ess_otros_factores=numero_nodos_ess_finales-numero_nodos_ess_tenia
-        numero_nodos_beta.append(numero_nodos_ess_otros_factores)
+        numero_nodos_ess_otros_factores=numero_nodos_ess_finales-numero_nodos_ess_tenia #esto me da cuantos nodos tuve que adicionar para alcanzar la cantidad de esencials
+        if numero_nodos_ess_otros_factores!=0:
+            numero_nodos_beta.append(numero_nodos_ess_otros_factores)
 
     #Estimacion de beta:
-    beta=np.mean(numero_nodos_beta)/numero_nodos_ess_real
-    beta_error=np.std(numero_nodos_beta)/numero_nodos_ess_real
-
-    #Guardamos los datos:
-    output={}
-    output['numero_nodos_ess_real']=numero_nodos_ess_real
-    output['betas']=numero_nodos_beta
-    output['beta_mean']=beta
-    output['beta_error']=beta_error
-  
+    beta=np.mean(numero_nodos_beta)/len(nodos)
+    beta_error=np.std(numero_nodos_beta)/len(nodos)
     
-    df= pd.DataFrame()
-    df['Date'] = output.keys()
-    df['DateValue'] = output.values()
-    df.to_csv(name+'_ibeps_data_beta.txt', sep='\t')
-
+    #Guardamos los datos:
+    
+    output_beta={}
+    output_beta['betas']=list(numero_nodos_beta)
+    output_beta['numero_nodos_ess_real']=numero_nodos_ess_real
+    output_beta['beta_mean']=beta
+    output_beta['beta_error']=beta_error
+    df_beta= pd.DataFrame()
+    df_beta['Date'] = output_beta.keys()
+    df_beta['DateValue'] = output_beta.values()
+    df_beta.to_csv(name+'_ibeps_data_beta.txt', sep='\t')
     
     return(beta,beta_error)
 
