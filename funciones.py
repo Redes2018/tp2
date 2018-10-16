@@ -240,33 +240,19 @@ def G_simulation(G,alfa,beta):
     
     return G
 #-----------------------------------------------------------------------------------
-def rewiring(G):
+def rewiring_easy(G):
     #Funcion de grafo G que toma un grafo y realiza un recableado
     #manteniendo el grado de cada nodo y devuelve ibeps la cantidad
     #de enlaces entre nodos esenciales luego de recablear.
-    
-    nodos=list(G.nodes)
-    enlaces=list(G.edges)
-    grados_dict = dict(G.degree())
-    k_nodo= list(grados_dict.values()) # lista de grados de cada nodo en nodos(ordenados)
+    #Utiliza la funcion nx.double_edge_swap que elije dos enlaces
+    #al azar y flipea los enlaces manteniendo los grados de los nodos.
 
-    #Eliminamos todos los enlaces:
-    G.remove_edges_from(enlaces)
+    numero_enlaces=G.number_of_edges()
     
-    #Inicializo k_control:
-    k_control=np.array(k_nodo) #cuando creo un enlace entre nodoi y nodoj se le resta un 1 a los lugares i y j de k_control
-    nodos_new=nodos
-    while(len(nodos_new)>1):
-        pair=list(np.random.choice(nodos_new, size=(1,2), replace=False)[0])#elegimos dos nodos al azar con reposicion
-        if pair[0]!=pair[1]: #evitamos crear autoloops
-            #Creamos el enlace
-            G.add_edge(pair[0], pair[1])
-            #Actualizamos variables de control: k_control y nodos_new
-            k_control[nodos.index(pair[0])]=k_control[nodos.index(pair[0])]-1 #actualizamos k_control en la pos i
-            k_control[nodos.index(pair[1])]=k_control[nodos.index(pair[1])]-1 #actualizamos k_control en la pos j
-            index_nonzerok=[i for i in range(0,len(k_control)) if k_control[i]!=0] #buscamos los lugares de k_control donde no hayan quedado zeros
-            nodos_new=[nodos[index_nonzerok[i]] for i in range(0,len(index_nonzerok)-1)] #actualizamos la lista de nodos asi no volvemos a tomar nodos que ya recableamos por completo
-            
+    #Realizamos un numero de swaps del orden de los nodos de la red
+    for i in range(0,int(numero_enlaces/2)):
+        nx.double_edge_swap(G, nswap=1)
+             
     #Contamos ibeps
     ibeps=0
     ess_dict = nx.get_node_attributes(G,'essential')
@@ -275,7 +261,7 @@ def rewiring(G):
     for enlace in enlaces:
         if ess_dict[enlace[0]] == True & ess_dict[enlace[1]]==True:
             ibeps=ibeps+1
-            
+
     return(G,ibeps)
 #-----------------------------------------------------------------------------------
 def alfa_He(G,N,name):
@@ -303,7 +289,7 @@ def alfa_He(G,N,name):
     for i in range(0,numero_de_rewirings):
         print('rewiring nro {}'.format(i))
         D=G.copy()
-        ibeps_simul.append(rewiring(D)[1])
+        ibeps_simul.append(rewiring_easy(D)[1])
 
     #Histograma
     plt.figure(1)
