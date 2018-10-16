@@ -1,0 +1,4 @@
+	Date	DateValue
+0	AP-MSfrac_sacando_E	0.2003699136868064
+1	AP-MSfrac_sacando_NE_mean	0.2127003699136834
+2	AP-MSerror	0.0

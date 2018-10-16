@@ -1,0 +1,4 @@
+	Date	DateValue
+0	LIT_Regulyfrac_sacando_E	0.5606289688539462
+1	LIT_Regulyfrac_sacando_NE_mean	0.25098276383428836
+2	LIT_Regulyerror	0.0

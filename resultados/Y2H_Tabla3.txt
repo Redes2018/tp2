@@ -1,0 +1,4 @@
+	Date	DateValue
+0	Y2Hfrac_sacando_E	0.5094152626362736
+1	Y2Hfrac_sacando_NE_mean	0.1174430128840416
+2	Y2Herror	0.0

@@ -1,0 +1,4 @@
+	Date	DateValue
+0	LITfrac_sacando_E	0.22200520833333334
+1	LITfrac_sacando_NE_mean	0.2779947916666647
+2	LITerror	0.0
